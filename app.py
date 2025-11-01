@@ -6,6 +6,21 @@ import random
 
 app = Flask(__name__)
 
+def get_currency_rates():
+    try:
+        url = "https://www.cbr-xml-daily.ru/daily_json.js"
+        response = requests.get(url)
+        data = response.json()
+        
+        usd = data['Valute']['USD']['Value']
+        eur = data['Valute']['EUR']['Value']
+        return f"💰 Курс: USD {usd}₽, EUR {eur}₽"
+    except:
+        return "Не удалось получить курс валют"
+
+elif 'курс' in user_command or 'валют' in user_command:
+    response_text = get_currency_rates()
+
 def get_weather(city_name):
     """Получение погоды через Open-Meteo API"""
     try:
@@ -197,3 +212,4 @@ def home():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
