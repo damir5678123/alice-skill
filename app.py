@@ -2,29 +2,89 @@ from flask import Flask, request, jsonify
 import os
 import requests
 from datetime import datetime
+import random
 
 app = Flask(__name__)
 
-# Ключ для погоды (бесплатный с openweathermap.org)
-WEATHER_API_KEY = "ваш_ключ"  # Получите на openweathermap.org
-
-
-def get_weather(city="Москва"):
-    """Получение погоды"""
+def get_weather(city_name):
+    """Получение погоды через Open-Meteo API"""
     try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric&lang=ru"
-        response = requests.get(url)
-        data = response.json()
-
-        if response.status_code == 200:
-            temp = data['main']['temp']
-            description = data['weather'][0]['description']
-            return f"В {city} сейчас {temp}°C, {description}"
+        # Словарь для перевода русских названий городов
+        city_translation = {
+            "москва": "Moscow", "санкт-петербург": "Saint Petersburg", 
+            "питер": "Saint Petersburg", "казань": "Kazan",
+            "новосибирск": "Novosibirsk", "екатеринбург": "Yekaterinburg",
+            "сочи": "Sochi", "крым": "Simferopol", "краснодар": "Krasnodar",
+            "нижний новгород": "Nizhny Novgorod", "ростов": "Rostov-on-Don",
+            "самара": "Samara", "омск": "Omsk", "челябинск": "Chelyabinsk",
+            "уфа": "Ufa", "волгоград": "Volgograd", "пермь": "Perm",
+            "воронеж": "Voronezh", "красноярск": "Krasnoyarsk"
+        }
+        
+        # Преобразуем русское название в английское
+        city_lower = city_name.lower().strip()
+        english_city = city_translation.get(city_lower, city_name)
+        
+        print(f"Ищем погоду для: {english_city}")
+        
+        # 1. Получаем координаты города
+        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={english_city}&count=1&language=ru"
+        geo_response = requests.get(geo_url, timeout=10)
+        geo_data = geo_response.json()
+        
+        print(f"Геоданные: {geo_data}")
+        
+        if 'results' in geo_data and geo_data['results']:
+            lat = geo_data['results'][0]['latitude']
+            lon = geo_data['results'][0]['longitude']
+            found_city_name = geo_data['results'][0]['name']
+            
+            # 2. Получаем погоду по координатам
+            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&timezone=auto"
+            weather_response = requests.get(weather_url, timeout=10)
+            weather_data = weather_response.json()
+            
+            print(f"Данные погоды: {weather_data}")
+            
+            if 'current_weather' in weather_data:
+                temp = weather_data['current_weather']['temperature']
+                windspeed = weather_data['current_weather']['windspeed']
+                weathercode = weather_data['current_weather']['weathercode']
+                
+                # Преобразуем код погоды в текст
+                weather_descriptions = {
+                    0: "☀️ ясно", 1: "🌤️ малооблачно", 2: "⛅ переменная облачность",
+                    3: "☁️ пасмурно", 45: "🌫️ туман", 48: "🌫️ изморозь",
+                    51: "🌦️ легкая морось", 53: "🌦️ морось", 55: "🌧️ сильная морось",
+                    61: "🌧️ небольшой дождь", 63: "🌧️ дождь", 65: "⛈️ сильный дождь",
+                    71: "🌨️ небольшой снег", 73: "🌨️ снег", 75: "❄️ сильный снег",
+                    80: "🌦️ ливень", 81: "🌧️ сильный ливень", 82: "⛈️ очень сильный ливень",
+                    95: "⛈️ гроза"
+                }
+                
+                weather_text = weather_descriptions.get(weathercode, "⛅ хорошая погода")
+                
+                return f"В {found_city_name} {temp}°C, {weather_text}, ветер {windspeed} км/ч"
+            else:
+                return "Не удалось получить данные о погоде"
         else:
-            return "Не удалось получить погоду"
-    except:
-        return "Ошибка при получении погоды"
+            return "Город не найден. Попробуйте: Москва, Санкт-Петербург, Казань, Сочи"
+            
+    except requests.exceptions.Timeout:
+        return "Превышено время ожидания. Попробуйте позже."
+    except Exception as e:
+        print(f"Ошибка в get_weather: {e}")
+        return "Не удалось получить погоду. Попробуйте другой город."
 
+def extract_city_from_command(command):
+    """Извлекает название города из команды пользователя"""
+    # Убираем ключевые слова
+    keywords = ["погода", "в", "какая", "скажи", "покажи", "как", "что"]
+    
+    for keyword in keywords:
+        command = command.replace(keyword, "")
+    
+    return command.strip()
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -43,65 +103,73 @@ def webhook():
         session = data['session']
         version = data['version']
 
+        print(f"Получена команда: {user_command}")
+
         # ОСНОВНАЯ ЛОГИКА НАВЫКА
         if user_command == '':
-            response_text = "Привет! Я улучшенный навык! Скажите: погода, время, расскажи шутку, или помощь"
-
+            response_text = "Привет! Я ваш умный помощник с настоящей погодой! 🌤️ Спросите: 'погода в Москве', 'сколько время', 'расскажи шутку' или 'помощь'"
+        
         elif 'привет' in user_command:
-            response_text = "Приветствую! Рад вас видеть!"
-
+            response_text = "Привет! Рад вас видеть! Спросите погоду в любом городе России! 🇷🇺"
+        
         elif 'помощь' in user_command or 'что ты умеешь' in user_command:
-            response_text = "Я умею: говорить время, рассказывать погоду, шутить, считать и многое другое! Попробуйте!"
-
+            response_text = "Я умею: 🌤️ Показывать погоду в любом городе, ⏰ Говорить время, 😄 Рассказывать шутки, 📚 Показывать интересные факты. Просто спросите!"
+        
         elif 'время' in user_command or 'который час' in user_command:
             current_time = datetime.now().strftime("%H:%M")
-            response_text = f"Сейчас {current_time}"
-
-        # НОВАЯ ФУНКЦИЯ: ПОГОДА
+            response_text = f"Сейчас {current_time} ⏰"
+        
+        # ПОГОДА С OPEN-METEO
         elif 'погода' in user_command:
-            if 'москв' in user_command:
-                response_text = get_weather("Moscow")
-            elif 'санкт-петербург' in user_command or 'питер' in user_command:
-                response_text = get_weather("Saint Petersburg")
+            if any(city in user_command for city in ['москв', 'питер', 'санкт-петербург', 'казан', 'новосибирск', 'екатеринбург', 'сочи']):
+                # Для известных городов
+                if 'москв' in user_command:
+                    response_text = get_weather("москва")
+                elif 'санкт-петербург' in user_command or 'питер' in user_command:
+                    response_text = get_weather("санкт-петербург")
+                elif 'казан' in user_command:
+                    response_text = get_weather("казань")
+                elif 'новосибирск' in user_command:
+                    response_text = get_weather("новосибирск")
+                elif 'екатеринбург' in user_command:
+                    response_text = get_weather("екатеринбург")
+                elif 'сочи' in user_command:
+                    response_text = get_weather("сочи")
             else:
-                response_text = get_weather()
-
-        # НОВАЯ ФУНКЦИЯ: ШУТКИ
+                # Для других городов - извлекаем название
+                city = extract_city_from_command(user_command)
+                if city:
+                    response_text = get_weather(city)
+                else:
+                    response_text = "В каком городе показать погоду? Например: 'погода в Москве'"
+        
+        # ШУТКИ
         elif 'шутк' in user_command or 'пошути' in user_command:
             jokes = [
-                "Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25!",
-                "Как называется песня, которую поёт API? JSON-der-ella!",
-                "Почему Python стал таким популярным? Потому что у него есть змеиное очарование!",
-                "Что сказал один HTTP другому? Ты опять 404-й?"
+                "Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25! 😄",
+                "Как называется песня, которую поёт API? JSON-der-ella! 🎵",
+                "Почему Python лучше Java? Потому что в Python нет NullPointerException! 🐍",
+                "Что сказал один HTTP другому? Ты опять 404-й? 🌐",
+                "Почему Python не нуждается в парковке? Потому что он интерпретируемый! 🚗"
             ]
-            import random
             response_text = random.choice(jokes)
-
-        # НОВАЯ ФУНКЦИЯ: КАЛЬКУЛЯТОР
-        elif 'сколько будет' in user_command or 'посчитай' in user_command:
-            try:
-                # Простой калькулятор
-                expr = user_command.replace('сколько будет', '').replace('посчитай', '').strip()
-                result = eval(expr)  # осторожно с eval!
-                response_text = f"{expr} = {result}"
-            except:
-                response_text = "Не могу посчитать. Попробуйте например: сколько будет 2+2"
-
-        # НОВАЯ ФУНКЦИЯ: ФАКТЫ
+        
+        # ФАКТЫ
         elif 'факт' in user_command or 'интересно' in user_command:
             facts = [
-                "Знаете ли вы, что первый программист была женщина - Ада Лавлейс!",
-                "Python был назван не в честь змеи, а в честь комедийного шоу 'Монти Пайтон'!",
-                "Самый популярный язык программирования в мире - JavaScript!",
-                "Первая компьютерная мышь была сделана из дерева!"
+                "Open-Meteo API полностью бесплатный и без ограничений! Используется NASA и ECMWF данными 🛰️",
+                "Первый программист была женщина - Ада Лавлейс, дочь поэта Байрона! 👩‍💻",
+                "Python был назван в честь комедийного шоу 'Монти Пайтон', а не змеи! 🐍",
+                "Самый популярный язык программирования в мире - JavaScript! 🌍",
+                "Первая компьютерная мышь была сделана из дерева в 1964 году! 🖱️"
             ]
-            import random
             response_text = random.choice(facts)
 
         else:
-            response_text = f"Вы сказали: '{user_command}'. Я еще учусь! Скажите 'помощь' для списка команд."
+            response_text = f"Не понял команду '{user_command}'. Скажите 'помощь' для списка команд. 🤔"
 
-        # Формируем ответ
+        print(f"Отправляем ответ: {response_text}")
+
         response = {
             "version": version,
             "session": session,
@@ -114,19 +182,17 @@ def webhook():
         return jsonify(response)
 
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Ошибка в webhook: {e}")
         return jsonify({
             "response": {
-                "text": "Произошла ошибка",
+                "text": "Произошла ошибка. Попробуйте еще раз.",
                 "end_session": True
             }
         })
 
-
 @app.route('/')
 def home():
-    return "Улучшенный навык для Алисы работает!"
-
+    return "Умный навык для Алисы с настоящей погодой через Open-Meteo! 🌤️"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
