@@ -18,9 +18,6 @@ def get_currency_rates():
     except:
         return "Не удалось получить курс валют"
 
-elif 'курс' in user_command or 'валют' in user_command:
-    response_text = get_currency_rates()
-
 def get_weather(city_name):
     """Получение погоды через Open-Meteo API"""
     try:
@@ -122,17 +119,21 @@ def webhook():
 
         # ОСНОВНАЯ ЛОГИКА НАВЫКА
         if user_command == '':
-            response_text = "Привет! Я ваш умный помощник с настоящей погодой! 🌤️ Спросите: 'погода в Москве', 'сколько время', 'расскажи шутку' или 'помощь'"
+            response_text = "Привет! Я ваш умный помощник с настоящей погодой! 🌤️ Спросите: 'погода в Москве', 'курс валют', 'сколько время', 'расскажи шутку' или 'помощь'"
         
         elif 'привет' in user_command:
             response_text = "Привет! Рад вас видеть! Спросите погоду в любом городе России! 🇷🇺"
         
         elif 'помощь' in user_command or 'что ты умеешь' in user_command:
-            response_text = "Я умею: 🌤️ Показывать погоду в любом городе, ⏰ Говорить время, 😄 Рассказывать шутки, 📚 Показывать интересные факты. Просто спросите!"
+            response_text = "Я умею: 🌤️ Показывать погоду в любом городе, 💰 Курсы валют, ⏰ Говорить время, 😄 Рассказывать шутки, 📚 Показывать интересные факты. Просто спросите!"
         
         elif 'время' in user_command or 'который час' in user_command:
             current_time = datetime.now().strftime("%H:%M")
             response_text = f"Сейчас {current_time} ⏰"
+        
+        # КУРСЫ ВАЛЮТ - ДОБАВЛЕНО ПРАВИЛЬНО
+        elif 'курс' in user_command or 'валют' in user_command:
+            response_text = get_currency_rates()
         
         # ПОГОДА С OPEN-METEO
         elif 'погода' in user_command:
@@ -207,9 +208,8 @@ def webhook():
 
 @app.route('/')
 def home():
-    return "Умный навык для Алисы с настоящей погодой через Open-Meteo! 🌤️"
+    return "Умный навык для Алисы с настоящей погодой и курсами валют! 🌤️💰"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
