@@ -6,6 +6,56 @@ import random
 
 app = Flask(__name__)
 
+def get_horoscope(sign="овен", day="today"):
+    """Получение гороскопа через Aztro API"""
+    try:
+        # Перевод русских названий на английские
+        sign_translation = {
+            "овен": "aries", "телец": "taurus", "близнецы": "gemini",
+            "рак": "cancer", "лев": "leo", "дева": "virgo",
+            "весы": "libra", "скорпион": "scorpio", "стрелец": "sagittarius",
+            "козерог": "capricorn", "водолей": "aquarius", "рыбы": "pisces"
+        }
+        
+        # Эмодзи для знаков
+        sign_emojis = {
+            "овен": "♈", "телец": "♉", "близнецы": "♊",
+            "рак": "♋", "лев": "♌", "дева": "♍", 
+            "весы": "♎", "скорпион": "♏", "стрелец": "♐",
+            "козерог": "♑", "водолей": "♒", "рыбы": "♓"
+        }
+        
+        english_sign = sign_translation.get(sign.lower(), "aries")
+        emoji = sign_emojis.get(sign.lower(), "✨")
+        
+        url = f"https://aztro.sameerkumar.website/?sign={english_sign}&day={day}"
+        response = requests.post(url, timeout=10)
+        data = response.json()
+        
+        description = data.get('description', 'Гороскоп временно недоступен')
+        lucky_number = data.get('lucky_number', '?')
+        lucky_time = data.get('lucky_time', '?')
+        mood = data.get('mood', '?')
+        
+        return f"{emoji} Гороскоп для {sign.capitalize()}:\n{description}\n\n🍀 Счастливое число: {lucky_number}\n⏰ Счастливое время: {lucky_time}\n😊 Настроение: {mood}"
+        
+    except Exception as e:
+        print(f"Ошибка гороскопа: {e}")
+        return "Не удалось получить гороскоп. Попробуйте позже."
+
+def extract_zodiac_sign(command):
+    """Извлекает знак зодиака из команды"""
+    zodiac_signs = [
+        "овен", "телец", "близнецы", "рак", "лев", "дева",
+        "весы", "скорпион", "стрелец", "козерог", "водолей", "рыбы"
+    ]
+    
+    command_lower = command.lower()
+    for sign in zodiac_signs:
+        if sign in command_lower:
+            return sign
+    return None
+
 advices = [
     "Сегодня отличный день для изучения чего-то нового! 📚",
     "Не откладывай на завтра то, что можно сделать сегодня! ⏰",
@@ -126,7 +176,7 @@ def webhook():
 
         # ОСНОВНАЯ ЛОГИКА НАВЫКА
         if user_command == '':
-            response_text = "Привет! Я ваш умный помощник с настоящей погодой! 🌤️ Спросите: 'погода в Москве', 'курс валют', 'сколько время', 'расскажи шутку' или 'помощь'"
+            response_text = "Привет! Я ваш умный помощник с настоящей погодой! 🌤️ Спросите: 'погода в Москве', 'курс валют', 'сколько время', 'расскажи шутку','совет','гороскоп' или 'помощь'"
         
         elif 'привет' in user_command:
             response_text = "Привет! Рад вас видеть! Спросите погоду в любом городе России! 🇷🇺"
@@ -137,6 +187,13 @@ def webhook():
         elif 'время' in user_command or 'который час' in user_command:
             current_time = datetime.now().strftime("%H:%M")
             response_text = f"Сейчас {current_time} ⏰"
+        # ГОРОСКОП
+        elif 'гороскоп' in user_command or 'знак зодиака' in user_command:
+            sign = extract_zodiac_sign(user_command)
+                 if sign:
+                     response_text = get_horoscope(sign)
+                 else:
+                    response_text = "Для какого знака зодиака гороскоп? Например: 'гороскоп для тельца' или 'гороскоп стрельца'"
         
         # КУРСЫ ВАЛЮТ - ДОБАВЛЕНО ПРАВИЛЬНО
         elif 'курс' in user_command or 'валют' in user_command:
@@ -223,4 +280,5 @@ def home():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
 
