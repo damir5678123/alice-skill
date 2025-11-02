@@ -176,26 +176,27 @@ def webhook():
 
         # ОСНОВНАЯ ЛОГИКА НАВЫКА
         if user_command == '':
-            response_text = "Привет! Я ваш умный помощник с настоящей погодой! 🌤️ Спросите: 'погода в Москве', 'курс валют', 'сколько время', 'расскажи шутку','совет','гороскоп' или 'помощь'"
+            response_text = "Привет! Я ваш умный помощник! 🌤️ Спросите: 'погода в Москве', 'курс валют', 'гороскоп тельца', 'совет', 'время' или 'помощь'"
         
         elif 'привет' in user_command:
-            response_text = "Привет! Рад вас видеть! Спросите погоду в любом городе России! 🇷🇺"
+            response_text = "Привет! Рад вас видеть! Спросите погоду, гороскоп или курс валют! 🇷🇺"
         
         elif 'помощь' in user_command or 'что ты умеешь' in user_command:
-            response_text = "Я умею: 🌤️ Показывать погоду в любом городе, 💰 Курсы валют, ⏰ Говорить время, 😄 Рассказывать шутки, 📚 Показывать интересные факты. Просто спросите!"
+            response_text = "Я умею: 🌤️ Погоду в любом городе, 💰 Курсы валют, ⏰ Время, ♈ Гороскоп, 💡 Советы, 😄 Шутки, 📚 Факты. Просто спросите!"
         
         elif 'время' in user_command or 'который час' in user_command:
             current_time = datetime.now().strftime("%H:%M")
             response_text = f"Сейчас {current_time} ⏰"
-        # ГОРОСКОП
+        
+        # ГОРОСКОП - ИСПРАВЛЕНЫ ОТСТУПЫ!
         elif 'гороскоп' in user_command or 'знак зодиака' in user_command:
             sign = extract_zodiac_sign(user_command)
-                 if sign:
-                     response_text = get_horoscope(sign)
-                 else:
-                    response_text = "Для какого знака зодиака гороскоп? Например: 'гороскоп для тельца' или 'гороскоп стрельца'"
+            if sign:
+                response_text = get_horoscope(sign)
+            else:
+                response_text = "Для какого знака зодиака гороскоп? Например: 'гороскоп для тельца' или 'гороскоп стрельца'"
         
-        # КУРСЫ ВАЛЮТ - ДОБАВЛЕНО ПРАВИЛЬНО
+        # КУРСЫ ВАЛЮТ
         elif 'курс' in user_command or 'валют' in user_command:
             response_text = get_currency_rates()
 
@@ -275,10 +276,8 @@ def webhook():
 
 @app.route('/')
 def home():
-    return "Умный навык для Алисы с настоящей погодой и курсами валют! 🌤️💰"
+    return "Умный навык для Алисы с погодой, гороскопами и курсами валют! 🌤️♈💰"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
-
