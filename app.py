@@ -6,6 +6,13 @@ import random
 
 app = Flask(__name__)
 
+advices = [
+    "Сегодня отличный день для изучения чего-то нового! 📚",
+    "Не откладывай на завтра то, что можно сделать сегодня! ⏰",
+    "Улыбнись - это повышает настроение! 😊",
+    "Выпей стакан воды - это полезно для здоровья! 💧"
+]
+
 def get_currency_rates():
     try:
         url = "https://www.cbr-xml-daily.ru/daily_json.js"
@@ -134,7 +141,10 @@ def webhook():
         # КУРСЫ ВАЛЮТ - ДОБАВЛЕНО ПРАВИЛЬНО
         elif 'курс' in user_command or 'валют' in user_command:
             response_text = get_currency_rates()
-        
+
+        elif 'совет' in user_command:
+            response_text = random.choice(advices)
+            
         # ПОГОДА С OPEN-METEO
         elif 'погода' in user_command:
             if any(city in user_command for city in ['москв', 'питер', 'санкт-петербург', 'казан', 'новосибирск', 'екатеринбург', 'сочи']):
@@ -213,3 +223,4 @@ def home():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
