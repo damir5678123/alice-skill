@@ -87,7 +87,13 @@ def get_weather(city_name):
             "нижний новгород": "Nizhny Novgorod", "ростов": "Rostov-on-Don",
             "самара": "Samara", "омск": "Omsk", "челябинск": "Chelyabinsk",
             "уфа": "Ufa", "волгоград": "Volgograd", "пермь": "Perm",
-            "воронеж": "Voronezh", "красноярск": "Krasnoyarsk"
+            "воронеж": "Voronezh", "красноярск": "Krasnoyarsk",
+            # ГОРОДА ОРЕНБУРГСКОЙ ОБЛАСТИ
+            "оренбург": "Orenburg", "новотроицк": "Novotroitsk", 
+            "гай": "Gai", "орск": "Orsk", "бузулук": "Buzuluk",
+            "бугуруслан": "Buguruslan", "кувандык": "Kuvandyk",
+            "медногорск": "Mednogorsk", "соль-илецк": "Sol-Iletsk",
+            "ясный": "Yasny", "абдулино": "Abdulino"
         }
         
         # Преобразуем русское название в английское
@@ -137,7 +143,7 @@ def get_weather(city_name):
             else:
                 return "Не удалось получить данные о погоде"
         else:
-            return "Город не найден. Попробуйте: Москва, Санкт-Петербург, Казань, Сочи"
+            return "Город не найден. Попробуйте: Москва, Санкт-Петербург, Оренбург, Орск, Новотроицк, Гай"
             
     except requests.exceptions.Timeout:
         return "Превышено время ожидания. Попробуйте позже."
@@ -176,19 +182,19 @@ def webhook():
 
         # ОСНОВНАЯ ЛОГИКА НАВЫКА
         if user_command == '':
-            response_text = "Привет! Я ваш умный помощник! 🌤️ Спросите: 'погода в Москве', 'курс валют', 'гороскоп тельца', 'совет', 'время' или 'помощь'"
+            response_text = "Привет! Я ваш умный помощник! 🌤️ Спросите: 'погода в Оренбурге', 'курс валют', 'гороскоп тельца', 'совет', 'время' или 'помощь'"
         
         elif 'привет' in user_command:
             response_text = "Привет! Рад вас видеть! Спросите погоду, гороскоп или курс валют! 🇷🇺"
         
         elif 'помощь' in user_command or 'что ты умеешь' in user_command:
-            response_text = "Я умею: 🌤️ Погоду в любом городе, 💰 Курсы валют, ⏰ Время, ♈ Гороскоп, 💡 Советы, 😄 Шутки, 📚 Факты. Просто спросите!"
+            response_text = "Я умею: 🌤️ Погоду в любом городе (включая Оренбург, Орск, Новотроицк, Гай), 💰 Курсы валют, ⏰ Время, ♈ Гороскоп, 💡 Советы, 😄 Шутки, 📚 Факты. Просто спросите!"
         
         elif 'время' in user_command or 'который час' in user_command:
             current_time = datetime.now().strftime("%H:%M")
             response_text = f"Сейчас {current_time} ⏰"
         
-        # ГОРОСКОП - ИСПРАВЛЕНЫ ОТСТУПЫ!
+        # ГОРОСКОП
         elif 'гороскоп' in user_command or 'знак зодиака' in user_command:
             sign = extract_zodiac_sign(user_command)
             if sign:
@@ -205,8 +211,24 @@ def webhook():
             
         # ПОГОДА С OPEN-METEO
         elif 'погода' in user_command:
-            if any(city in user_command for city in ['москв', 'питер', 'санкт-петербург', 'казан', 'новосибирск', 'екатеринбург', 'сочи']):
-                # Для известных городов
+            # Проверяем города Оренбургской области
+            orenburg_cities = {
+                'оренбург': 'оренбург', 'новотроицк': 'новотроицк', 'гай': 'гай',
+                'орск': 'орск', 'бузулук': 'бузулук', 'бугуруслан': 'бугуруслан',
+                'кувандык': 'кувандык', 'медногорск': 'медногорск', 'соль-илецк': 'соль-илецк',
+                'ясный': 'ясный', 'абдулино': 'абдулино'
+            }
+            
+            found_city = None
+            for city_keyword, city_name in orenburg_cities.items():
+                if city_keyword in user_command:
+                    found_city = city_name
+                    break
+            
+            if found_city:
+                response_text = get_weather(found_city)
+            elif any(city in user_command for city in ['москв', 'питер', 'санкт-петербург', 'казан', 'новосибирск', 'екатеринбург', 'сочи']):
+                # Для других известных городов
                 if 'москв' in user_command:
                     response_text = get_weather("москва")
                 elif 'санкт-петербург' in user_command or 'питер' in user_command:
@@ -225,7 +247,7 @@ def webhook():
                 if city:
                     response_text = get_weather(city)
                 else:
-                    response_text = "В каком городе показать погоду? Например: 'погода в Москве'"
+                    response_text = "В каком городе показать погоду? Например: 'погода в Оренбурге' или 'погода в Орске'"
         
         # ШУТКИ
         elif 'шутк' in user_command or 'пошути' in user_command:
@@ -276,7 +298,7 @@ def webhook():
 
 @app.route('/')
 def home():
-    return "Умный навык для Алисы с погодой, гороскопами и курсами валют! 🌤️♈💰"
+    return "Умный навык для Алисы с погодой, гороскопами и курсами валют! 🌤️♈💰 Поддерживает города Оренбургской области: Оренбург, Орск, Новотроицк, Гай и другие!"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
